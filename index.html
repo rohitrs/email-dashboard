@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Supercharge Skills — Email Triage Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Inter:wght@300;400;500;600;700&family=Dancing+Script:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --green:       #6B9B37;
+      --green-dark:  #4a7a22;
+      --green-light: #e8f4d9;
+      --yellow:      #F0C030;
+      --yellow-light:#fffbe8;
+      --pink:        #D4388C;
+      --dark:        #1a1a1a;
+      --mid:         #4b5563;
+      --soft:        #9ca3af;
+      --bg:          #f8faf5;
+      --white:       #ffffff;
+      --red:         #dc2626;
+      --red-light:   #fef2f2;
+      --amber:       #d97706;
+      --amber-light: #fffbeb;
+      --blue:        #2563eb;
+      --blue-light:  #eff6ff;
+      --radius:      12px;
+      --shadow:      0 2px 12px rgba(0,0,0,0.07);
+    }
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+    html { scroll-behavior: smooth; }
+    body { font-family:'Inter',sans-serif; background:var(--bg); color:var(--dark); min-height:100vh; }
+
+    /* ─── HEADER ─── */
+    .header {
+      background: var(--white);
+      border-bottom: 3px solid var(--green);
+      padding: 16px 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky; top:0; z-index:200;
+      box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+    }
+    .logo-wrap { display:flex; align-items:center; gap:14px; }
+    .logo-svg  { width:52px; height:52px; flex-shrink:0; }
+    .logo-text { display:flex; flex-direction:column; gap:1px; }
+    .logo-brand {
+      font-family:'Playfair Display',serif;
+      font-size:21px; font-weight:600;
+      color:var(--dark); letter-spacing:-0.3px;
+    }
+    .logo-brand span { border-bottom:1.5px solid var(--dark); display:inline-block; }
+    .logo-skills {
+      font-family:'Dancing Script',cursive;
+      font-size:18px; font-weight:700;
+      color:var(--pink); line-height:1;
+    }
+    .header-right { text-align:right; }
+    .dash-label {
+      font-size:11px; font-weight:600; letter-spacing:2px;
+      text-transform:uppercase; color:var(--soft);
+    }
+    .last-updated {
+      font-size:12px; color:var(--mid); margin-top:4px; font-weight:500;
+    }
+    .live-dot {
+      display:inline-block; width:7px; height:7px;
+      background:var(--green); border-radius:50%;
+      margin-right:5px; animation:pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%,100%{opacity:1;transform:scale(1)}
+      50%{opacity:.5;transform:scale(1.3)}
+    }
+
+    /* ─── STATS BAR ─── */
+    .stats-bar {
+      background: var(--dark);
+      padding: 0 48px;
+      display: flex;
+    }
+    .stat {
+      flex:1; padding:18px 0; text-align:center;
+      border-right:1px solid rgba(255,255,255,0.1);
+    }
+    .stat:last-child { border-right:none; }
+    .stat-n {
+      font-size:30px; font-weight:700; line-height:1;
+      font-family:'Playfair Display',serif;
+      color:var(--white);
+    }
+    .stat-n.red   { color:#f87171; }
+    .stat-n.amber { color:var(--yellow); }
+    .stat-n.blue  { color:#93c5fd; }
+    .stat-n.green { color:#6ee7b7; }
+    .stat-l {
+      font-size:10px; letter-spacing:1.5px; text-transform:uppercase;
+      color:rgba(255,255,255,0.45); margin-top:5px; font-weight:500;
+    }
+
+    /* ─── ALERT BANNER ─── */
+    .alert-banner {
+      background:linear-gradient(135deg,#b91c1c,#dc2626);
+      color:white; padding:13px 48px;
+      display:flex; align-items:flex-start; gap:12px;
+      font-size:13.5px; font-weight:500; line-height:1.5;
+    }
+    .alert-banner.hidden { display:none; }
+    .alert-icon { font-size:18px; flex-shrink:0; margin-top:1px; }
+
+    /* ─── MAIN ─── */
+    .main { max-width:1240px; margin:0 auto; padding:36px 48px 60px; }
+
+    /* ─── SECTION ─── */
+    .section { margin-bottom:40px; }
+    .section-head {
+      display:flex; align-items:center; gap:12px;
+      margin-bottom:18px; padding-bottom:12px;
+      border-bottom:2px solid var(--green-light);
+    }
+    .section-title {
+      font-family:'Playfair Display',serif;
+      font-size:21px; font-weight:600; color:var(--dark);
+    }
+    .badge {
+      font-size:10px; font-weight:700; letter-spacing:1px;
+      text-transform:uppercase; padding:4px 11px;
+      border-radius:20px; color:white;
+    }
+    .badge.green  { background:var(--green); }
+    .badge.amber  { background:var(--amber); }
+    .badge.gray   { background:#6b7280; }
+    .badge.red    { background:var(--red); }
+
+    /* ─── EMAIL TABLE ─── */
+    .email-table {
+      width:100%; border-collapse:collapse;
+      background:var(--white); border-radius:var(--radius);
+      box-shadow:var(--shadow); overflow:hidden;
+    }
+    .email-table thead tr { background:var(--green); }
+    .email-table thead th {
+      padding:12px 16px; text-align:left;
+      font-size:10px; font-weight:700; letter-spacing:1.5px;
+      text-transform:uppercase; color:white;
+    }
+    .email-table tbody tr {
+      border-bottom:1px solid #f0f4ec;
+      transition:background .15s;
+    }
+    .email-table tbody tr:last-child { border-bottom:none; }
+    .email-table tbody tr:hover { background:#f4faf0; }
+    .email-table tbody td {
+      padding:14px 16px; font-size:13.5px; vertical-align:top;
+    }
+    .num { font-weight:700; color:var(--green); font-size:14px; width:30px; }
+    .s-name { font-weight:600; font-size:13.5px; }
+    .s-email { font-size:11px; color:var(--soft); margin-top:2px; }
+    .subject { font-weight:500; }
+    .date-chip {
+      display:inline-block; font-size:11px; font-weight:600;
+      padding:3px 9px; border-radius:8px;
+      background:#f3f4f6; color:var(--mid);
+      white-space:nowrap;
+    }
+    .date-chip.today { background:#dcfce7; color:#15803d; }
+    .signal { font-size:13px; color:var(--mid); line-height:1.45; }
+    .flag { color:var(--red); font-weight:700; }
+
+    /* ─── PRIORITY PILL ─── */
+    .pill {
+      display:inline-flex; align-items:center; gap:4px;
+      font-size:10px; font-weight:700; letter-spacing:.5px;
+      text-transform:uppercase; padding:4px 10px; border-radius:20px;
+      white-space:nowrap;
+    }
+    .pill.urgent { background:var(--red-light);   color:var(--red);   }
+    .pill.action { background:var(--amber-light);  color:var(--amber); }
+    .pill.fyi    { background:var(--blue-light);   color:var(--blue);  }
+    .pill.spam   { background:#f3f4f6;             color:#6b7280;      }
+
+    /* ─── BACKLOG GRID ─── */
+    .backlog-grid {
+      display:grid;
+      grid-template-columns:repeat(auto-fill,minmax(300px,1fr));
+      gap:14px;
+    }
+    .b-card {
+      background:var(--white); border-radius:var(--radius);
+      padding:18px; box-shadow:var(--shadow);
+      border-left:4px solid var(--amber);
+      transition:transform .15s, box-shadow .15s;
+    }
+    .b-card:hover { transform:translateY(-2px); box-shadow:0 6px 20px rgba(0,0,0,0.1); }
+    .b-card.crit  { border-left-color:var(--red); }
+    .b-card.old   { border-left-color:#9ca3af; }
+    .b-head { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px; gap:8px; }
+    .b-sender { font-weight:700; font-size:14px; min-width:0; }
+    .b-date   { font-size:11px; color:var(--soft); flex-shrink:0; white-space:nowrap; }
+    .b-desc   { font-size:13px; color:#374151; line-height:1.55; }
+
+    /* ─── SPAM CHIPS ─── */
+    .spam-wrap {
+      background:var(--white); border-radius:var(--radius);
+      padding:22px; box-shadow:var(--shadow);
+      display:flex; flex-wrap:wrap; gap:10px;
+    }
+    .spam-chip {
+      background:#f3f4f6; color:#9ca3af;
+      font-size:12px; padding:5px 13px;
+      border-radius:20px; text-decoration:line-through;
+    }
+
+    /* ─── FOOTER ─── */
+    .footer {
+      background:var(--dark); color:rgba(255,255,255,.4);
+      text-align:center; padding:24px 48px; font-size:12px;
+    }
+    .footer strong { color:var(--green); }
+    .footer .next  { color:rgba(255,255,255,.6); margin-top:6px; font-size:11px; }
+
+    /* ══════════════════════════════════════════
+       RESPONSIVE — TABLET
+    ══════════════════════════════════════════ */
+    @media (max-width: 960px) {
+      .header     { padding: 14px 32px; }
+      .stats-bar  { padding: 0 32px; }
+      .alert-banner { padding: 12px 32px; }
+      .main       { padding: 28px 32px 52px; }
+    }
+
+    /* ══════════════════════════════════════════
+       RESPONSIVE — MOBILE  (≤ 768px)
+    ══════════════════════════════════════════ */
+    @media (max-width: 768px) {
+
+      /* Header */
+      .header {
+        padding: 11px 16px;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .logo-svg   { width: 40px; height: 40px; }
+      .logo-wrap  { gap: 10px; }
+      .logo-brand { font-size: 17px; }
+      .logo-skills { font-size: 15px; }
+      .header-right { margin-left: auto; text-align: right; }
+      .dash-label   { font-size: 9.5px; letter-spacing: 1.5px; }
+      .last-updated { font-size: 10.5px; margin-top: 2px; }
+
+      /* Stats bar — 3 columns (rows: 3 + 2) */
+      .stats-bar {
+        padding: 0;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+      }
+      .stat {
+        padding: 13px 6px;
+        border-right: 1px solid rgba(255,255,255,0.1);
+        border-bottom: 1px solid rgba(255,255,255,0.06);
+      }
+      /* Right edge of each row */
+      .stat:nth-child(3),
+      .stat:nth-child(5)  { border-right: none; }
+      /* Bottom row has no bottom border */
+      .stat:nth-child(4),
+      .stat:nth-child(5)  { border-bottom: none; }
+      .stat-n { font-size: 24px; }
+      .stat-l { font-size: 9px; letter-spacing: 0.8px; }
+
+      /* Alert banner */
+      .alert-banner { padding: 10px 16px; font-size: 12.5px; gap: 8px; }
+
+      /* Main */
+      .main { padding: 18px 16px 44px; }
+
+      /* Section */
+      .section { margin-bottom: 30px; }
+      .section-title { font-size: 18px; }
+      .badge { font-size: 9px; padding: 3px 9px; }
+
+      /* ── Email table → card layout on mobile ── */
+      .email-table {
+        display: block;
+        background: transparent;
+        box-shadow: none;
+        overflow: visible;
+        border-radius: 0;
+      }
+      .email-table thead { display: none; }
+      .email-table tbody { display: flex; flex-direction: column; gap: 10px; }
+
+      .email-table tbody tr {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        grid-template-rows: auto auto auto;
+        background: var(--white);
+        border-radius: var(--radius);
+        padding: 14px 16px;
+        box-shadow: var(--shadow);
+        border-left: 4px solid var(--green);
+        border-bottom: none;
+        column-gap: 10px;
+        row-gap: 4px;
+        transition: box-shadow .15s;
+      }
+      .email-table tbody tr:hover {
+        background: #f9fff5;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+      }
+
+      /* Column 1 of table = # number → hidden */
+      .email-table tbody td:nth-child(1) { display: none; }
+
+      /* Column 2 = From → left side, row 1 */
+      .email-table tbody td:nth-child(2) {
+        grid-column: 1; grid-row: 1;
+        padding: 0;
+      }
+      /* Column 3 = Subject → left side, row 2 */
+      .email-table tbody td:nth-child(3) {
+        grid-column: 1; grid-row: 2;
+        padding: 0; font-size: 13px;
+      }
+      /* Column 4 = Date → right side, row 1 */
+      .email-table tbody td:nth-child(4) {
+        grid-column: 2; grid-row: 1;
+        padding: 0; text-align: right; align-self: start;
+      }
+      /* Column 5 = Signal → full width, row 3, with separator */
+      .email-table tbody td:nth-child(5) {
+        grid-column: 1 / -1; grid-row: 3;
+        padding: 8px 0 0;
+        margin-top: 4px;
+        border-top: 1px solid #f0f4ec;
+        font-size: 12.5px;
+      }
+      /* Column 6 = Priority pill → right side, row 2 */
+      .email-table tbody td:nth-child(6) {
+        grid-column: 2; grid-row: 2;
+        padding: 0; text-align: right; align-self: start;
+      }
+
+      /* Smaller pill on mobile */
+      .pill { font-size: 9px; padding: 3px 8px; gap: 3px; }
+      .s-name { font-size: 13px; }
+      .s-email { font-size: 10.5px; }
+
+      /* Backlog → single column */
+      .backlog-grid { grid-template-columns: 1fr; gap: 10px; }
+      .b-card { padding: 14px 16px; }
+      .b-sender { font-size: 13.5px; }
+      .b-desc { font-size: 12.5px; }
+
+      /* Spam */
+      .spam-wrap { padding: 16px; gap: 8px; }
+      .spam-chip { font-size: 11.5px; padding: 4px 11px; }
+
+      /* Footer */
+      .footer { padding: 18px 16px; font-size: 11.5px; }
+      .footer .next { font-size: 10.5px; }
+    }
+
+    /* ══════════════════════════════════════════
+       RESPONSIVE — SMALL PHONES  (≤ 420px)
+    ══════════════════════════════════════════ */
+    @media (max-width: 420px) {
+      .logo-svg    { width: 34px; height: 34px; }
+      .logo-brand  { font-size: 15px; }
+      .logo-skills { font-size: 13px; }
+
+      /* Stats: 2 columns (2+2+1 layout) */
+      .stats-bar { grid-template-columns: repeat(2, 1fr); }
+
+      /* Reset 3-col borders */
+      .stat { border-right: 1px solid rgba(255,255,255,0.1); border-bottom: 1px solid rgba(255,255,255,0.06); }
+      .stat:nth-child(3) { border-right: 1px solid rgba(255,255,255,0.1); border-bottom: 1px solid rgba(255,255,255,0.06); }
+      .stat:nth-child(5) { border-right: 1px solid rgba(255,255,255,0.1); }
+
+      /* Even items lose right border */
+      .stat:nth-child(2),
+      .stat:nth-child(4) { border-right: none; }
+      /* Last row (items 5+) loses bottom border */
+      .stat:nth-child(5) { grid-column: span 2; border-right: none; border-bottom: none; }
+      /* Row 2 items (3 & 4) lose bottom border */
+      .stat:nth-child(3),
+      .stat:nth-child(4) { border-bottom: none; }
+
+      .stat-n { font-size: 21px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════ HEADER ═══════════════════════════════ -->
+<header class="header">
+  <div class="logo-wrap">
+    <svg class="logo-svg" viewBox="0 0 110 110" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <radialGradient id="g1" cx="40%" cy="35%" r="65%">
+          <stop offset="0%" stop-color="#8BBF4D"/>
+          <stop offset="100%" stop-color="#4a7a22"/>
+        </radialGradient>
+        <radialGradient id="g2" cx="60%" cy="55%" r="60%">
+          <stop offset="0%" stop-color="#F5D060"/>
+          <stop offset="100%" stop-color="#E8A800"/>
+        </radialGradient>
+      </defs>
+      <ellipse cx="46" cy="42" rx="34" ry="38" fill="url(#g1)" opacity="0.92" transform="rotate(-12,46,42)"/>
+      <ellipse cx="68" cy="66" rx="26" ry="20" fill="url(#g2)" opacity="0.90" transform="rotate(15,68,66)"/>
+      <ellipse cx="56" cy="52" rx="18" ry="16" fill="#6B9B37" opacity="0.35" transform="rotate(5,56,52)"/>
+    </svg>
+    <div class="logo-text">
+      <div class="logo-brand"><span>supercharge</span></div>
+      <div class="logo-skills">skills</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="dash-label">Email Triage Dashboard</div>
+    <div class="last-updated">
+      <span class="live-dot"></span>
+      <!-- INJECT: last_updated -->
+      Last updated: Mon, May 26, 2026 · 07:00 IST
+    </div>
+  </div>
+</header>
+
+<!-- ═══════════════════════════════ STATS BAR ═══════════════════════════════ -->
+<div class="stats-bar">
+  <!-- INJECT: stats -->
+  <div class="stat">
+    <div class="stat-n">25+</div>
+    <div class="stat-l">Unread Total</div>
+  </div>
+  <div class="stat">
+    <div class="stat-n red">3</div>
+    <div class="stat-l">Urgent</div>
+  </div>
+  <div class="stat">
+    <div class="stat-n amber">9</div>
+    <div class="stat-l">Action Needed</div>
+  </div>
+  <div class="stat">
+    <div class="stat-n blue">2</div>
+    <div class="stat-l">FYI / Monitor</div>
+  </div>
+  <div class="stat">
+    <div class="stat-n green">0</div>
+    <div class="stat-l">Responded Today</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ ESCALATION ALERT ═══════════════════════════════ -->
+<!-- INJECT: alert_banner -->
+<div class="alert-banner">
+  <span class="alert-icon">⚠️</span>
+  <span>3 urgent items need attention today &nbsp;·&nbsp; Moushumi's session plan: review by May 26 &nbsp;·&nbsp; Namita's registration bounced — find correct email</span>
+</div>
+
+<!-- ═══════════════════════════════ MAIN ═══════════════════════════════ -->
+<main class="main">
+
+  <!-- ── SECTION 1: LAST 72 HRS ── -->
+  <section class="section">
+    <div class="section-head">
+      <h2 class="section-title">Last 72 Hours</h2>
+      <span class="badge green">High Signal</span>
+    </div>
+    <!-- INJECT: recent_table -->
+    <table class="email-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>From</th>
+          <th>Subject</th>
+          <th>Date</th>
+          <th>What's Needed</th>
+          <th>Priority</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="num">1</td>
+          <td>
+            <div class="s-name">Vijit Jain</div>
+            <div class="s-email">vijitj@gmail.com</div>
+          </td>
+          <td class="subject">Re: Goa Event — Riithu &amp; Vijit Jain</td>
+          <td><span class="date-chip today">Today</span></td>
+          <td class="signal">Reply to Jul 3–5 event invite — confirm their spot &amp; share next steps</td>
+          <td><span class="pill urgent">🔴 Urgent</span></td>
+        </tr>
+        <tr>
+          <td class="num">2</td>
+          <td>
+            <div class="s-name">Mail Daemon</div>
+            <div class="s-email">mailer-daemon</div>
+          </td>
+          <td class="subject">Delivery Failure — Namita's Registration</td>
+          <td><span class="date-chip today">Today</span></td>
+          <td class="signal"><span class="flag">!!</span> namita.angel0608@gmail.com invalid — find correct email &amp; resend 3-Day Event confirmation</td>
+          <td><span class="pill urgent">🔴 Urgent</span></td>
+        </tr>
+        <tr>
+          <td class="num">3</td>
+          <td>
+            <div class="s-name">Moushumi</div>
+            <div class="s-email">momo12in@yahoo.co.in</div>
+          </td>
+          <td class="subject">Spiritual Awareness for Leaders — Session Plan</td>
+          <td><span class="date-chip">May 23</span></td>
+          <td class="signal"><span class="flag">!! HR pitch May 27</span> — review her session plan &amp; send feedback by May 26</td>
+          <td><span class="pill urgent">🔴 Urgent</span></td>
+        </tr>
+        <tr>
+          <td class="num">4</td>
+          <td>
+            <div class="s-name">Ram Vadde</div>
+            <div class="s-email">ramvadde@yahoo.com</div>
+          </td>
+          <td class="subject">Foreword for my Book</td>
+          <td><span class="date-chip">May 23</span></td>
+          <td class="signal">Requesting Rohini to write book foreword — reply accepting or declining</td>
+          <td><span class="pill action">🟡 Action Needed</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ── SECTION 2: BACKLOG ── -->
+  <section class="section">
+    <div class="section-head">
+      <h2 class="section-title">Older Backlog</h2>
+      <span class="badge amber">Needs Response</span>
+    </div>
+    <!-- INJECT: backlog_cards -->
+    <div class="backlog-grid">
+      <div class="b-card">
+        <div class="b-head">
+          <span class="b-sender">Ridheema Bagla</span>
+          <span class="b-date">Apr 22, 2026</span>
+        </div>
+        <div class="b-desc">Payment receipt dispute — re-enrolled Apr 2026 but received Oct 2025 receipt. Verify payment records &amp; resend correct receipt.</div>
+      </div>
+      <div class="b-card">
+        <div class="b-head">
+          <span class="b-sender">Shavi K</span>
+          <span class="b-date">Mar 22, 2026</span>
+        </div>
+        <div class="b-desc">WhatsApp group access for XSAM 2025. Number: <strong>9326507305</strong>. Add her &amp; confirm via email. Very overdue.</div>
+      </div>
+      <div class="b-card">
+        <div class="b-head">
+          <span class="b-sender">Ranendu Chakraborty</span>
+          <span class="b-date">May 21, 2026</span>
+        </div>
+        <div class="b-desc">Responded to positioning strategy — asking for a curated roadmap for defence aspirants. Needs structured reply.</div>
+      </div>
+      <div class="b-card">
+        <div class="b-head">
+          <span class="b-sender">Giriraj Jhawar</span>
+          <span class="b-date">Jan 5, 2026</span>
+        </div>
+        <div class="b-desc">Follow-up on Jan 2 email — no reply sent yet. Needs a response.</div>
+      </div>
+      <div class="b-card">
+        <div class="b-head">
+          <span class="b-sender">Angel &amp; Genie (Recruitment)</span>
+          <span class="b-date">Dec 17, 2025</span>
+        </div>
+        <div class="b-desc">Submitted candidate Manguesh (9 yrs exp) for Client Coordinator role. Confirm if role is open &amp; whether to proceed to interview.</div>
+      </div>
+      <div class="b-card old">
+        <div class="b-head">
+          <span class="b-sender">Isha Malhotra</span>
+          <span class="b-date">Oct 11, 2025</span>
+        </div>
+        <div class="b-desc">XSAM session date confusion — likely missed the session. Offer recording access or makeup seat.</div>
+      </div>
+      <div class="b-card old">
+        <div class="b-head">
+          <span class="b-sender">Mansi Shukla</span>
+          <span class="b-date">Oct 19, 2025</span>
+        </div>
+        <div class="b-desc">"Hi! Any update on this?" — program timeline query, 7+ months without a reply.</div>
+      </div>
+      <div class="b-card crit">
+        <div class="b-head">
+          <span class="b-sender">Nisarg Consultancy ⚠️</span>
+          <span class="b-date">Dec 12, 2024</span>
+        </div>
+        <div class="b-desc">GST / TDS compliance — 7 Intelligence Pvt Ltd. Rs. 93,511 ITC credits flagged. Review with CA urgently. 1.5 years old.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── SECTION 3: SPAM ── -->
+  <section class="section">
+    <div class="section-head">
+      <h2 class="section-title">Spam / Cold Outreach</h2>
+      <span class="badge gray">Bulk Archive — No Reply</span>
+    </div>
+    <!-- INJECT: spam_chips -->
+    <div class="spam-wrap">
+      <span class="spam-chip">OpusClip Partnership</span>
+      <span class="spam-chip">KOMI Influencer Opportunity</span>
+      <span class="spam-chip">ClackyAI ×2</span>
+      <span class="spam-chip">Crystal Rep — Reputation Mgmt</span>
+      <span class="spam-chip">socialboostorganic — Instagram Growth</span>
+      <span class="spam-chip">Sai Blackbyrn — Coaching Cold Email</span>
+      <span class="spam-chip">Sophia Carter "BOOK"</span>
+      <span class="spam-chip">Tulasi — Workshop Question</span>
+      <span class="spam-chip">Abhyas Yoga Retreat ×2</span>
+    </div>
+  </section>
+
+</main>
+
+<!-- ═══════════════════════════════ FOOTER ═══════════════════════════════ -->
+<footer class="footer">
+  <div>Supercharge Skills &nbsp;·&nbsp; Client Servicing Dashboard &nbsp;·&nbsp; Powered by AI Check-in</div>
+  <div class="next">
+    <strong>Goal:</strong> zero unanswered client emails &nbsp;·&nbsp; zero escalations
+    &nbsp;&nbsp;|&nbsp;&nbsp;
+    Next auto-refresh: Tomorrow 7:00 AM IST
+  </div>
+</footer>
+
+</body>
+</html>
